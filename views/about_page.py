@@ -4,9 +4,11 @@ from pathlib import Path
 import streamlit as st
 
 from database import dataset_info
+from ui import page_header
 
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 
+page_header("ℹ️", "About & limitations", "What works, what is synthetic, what is not validated, and what comes next.", "slate")
 info = dataset_info()
 st.caption(
     f"Current data: **{info.get('source', 'unknown')}** · generator version {info.get('generator_version', '?')} · "
@@ -15,7 +17,8 @@ st.caption(
 
 limitations = DOCS / "LIMITATIONS.md"
 if limitations.exists():
-    st.markdown(limitations.read_text(encoding="utf-8"))
+    text = limitations.read_text(encoding="utf-8")
+    st.markdown(text.split("\n", 1)[1] if text.startswith("# ") else text)  # the banner replaces the file's title
 else:
     st.error("docs/LIMITATIONS.md is missing.")
 

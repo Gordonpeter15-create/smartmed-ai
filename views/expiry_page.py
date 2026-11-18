@@ -4,11 +4,13 @@ import streamlit as st
 
 import expiry
 from expiry import STATUS_ORDER
-from ui import cached_forecast
+from ui import badge_styles, cached_forecast, page_header, stat_card
 
+STATUS_TONES = {"Expired": "red", "At risk": "rose", "Watch": "amber", "OK": "green", "No forecast": "slate"}
+STATUS_BADGES = {"Expired": "red", "At risk": "red", "Watch": "amber", "OK": "green", "No forecast": "slate"}
 STATUS_ICONS = {"Expired": "⛔", "At risk": "🔴", "Watch": "🟡", "OK": "🟢", "No forecast": "⚪"}
 
-st.title("🗓️ Batch expiry")
+page_header("🗓️", "Batch expiry", "Which batch to use first, and which batches may expire before they are used.", "rose")
 st.warning(
     "🧪 Projections use a **synthetic** demand forecast. Expiry flags are stock-keeping prompts for a responsible "
     "staff member, **not** a clinical or regulatory determination. Always check the label and local rules."
@@ -26,7 +28,8 @@ if table.empty:
 
 counts = table["status"].value_counts()
 for column, status in zip(st.columns(len(STATUS_ORDER)), STATUS_ORDER):
-    column.metric(f"{STATUS_ICONS[status]} {status}", int(counts.get(status, 0)))
+    with column:
+        stat_card(f"{STATUS_ICONS[status]} {status}", int(counts.get(status, 0)), STATUS_TONES[status] if counts.get(status, 0) else "slate", key=f"status-{status}")
 st.caption(
     "⛔ Expired = still in stock after its expiry date · 🔴 At risk = units expected to expire unused at forecast demand · "
     "🟡 Watch = only in a quiet period (bottom of the forecast range) · 🟢 OK = expected to be used up in time."
@@ -44,8 +47,9 @@ if visible.empty:
 else:
     display = visible.assign(status_label=visible["status"].map(lambda s: f"{STATUS_ICONS[s]} {s}"))
     st.dataframe(
-        display[["medicine", "batch_code", "fefo_order", "quantity", "unit", "expiry_date", "days_to_expiry",
-                 "days_needed", "expected_unused", "status_label", "explanation"]],
+        badge_styles(display[["medicine", "batch_code", "fefo_order", "quantity", "unit", "expiry_date", "days_to_expiry",
+                              "days_needed", "expected_unused", "status_label", "explanation"]],
+                     {"status_label": STATUS_BADGES}),
         column_config={
             "medicine": "Medicine", "batch_code": "Batch",
             "fefo_order": st.column_config.NumberColumn("Use order", help="1 = use first (First Expiry, First Out)."),

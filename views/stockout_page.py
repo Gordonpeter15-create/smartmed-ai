@@ -6,11 +6,12 @@ import streamlit as st
 
 import stockout
 from stockout import DEFAULT_LEAD_TIME_DAYS, RISK_ORDER, SIMULATION_DAYS
-from ui import cached_forecast
+from ui import badge_styles, cached_forecast, page_header, stat_card
 
+RISK_TONES = {"Critical": "red", "High": "orange", "Medium": "amber", "Low": "green", "Unknown": "slate"}
 RISK_ICONS = {"Critical": "🔴", "High": "🟠", "Medium": "🟡", "Low": "🟢", "Unknown": "⚪"}
 
-st.title("⏳ Stockout risk")
+page_header("⏳", "Stockout risk", "How long current stock is expected to last, and why each risk level was given.", "red")
 st.warning(
     "🧪 Estimates from a **synthetic** demand forecast and current stock. They are prototype prompts for a "
     "responsible staff member to review, **not** guarantees or instructions."
@@ -41,7 +42,8 @@ if (today - history_end).days > 1:
 counts = table["risk"].value_counts()
 columns = st.columns(len(RISK_ORDER))
 for column, level in zip(columns, RISK_ORDER):
-    column.metric(f"{RISK_ICONS[level]} {level}", int(counts.get(level, 0)))
+    with column:
+        stat_card(f"{RISK_ICONS[level]} {level}", int(counts.get(level, 0)), RISK_TONES[level] if counts.get(level, 0) else "slate", key=f"risk-{level}")
 
 st.subheader("All medicines")
 display = table.assign(
@@ -53,7 +55,8 @@ display = table.assign(
 if "Unknown" in set(table["risk"]):
     display.loc[display["risk"] == "Unknown", ["expected", "busy"]] = "—"
 st.dataframe(
-    display[["medicine", "risk_label", "usable_stock", "forecast_week", "expected", "busy", "lead", "reason"]],
+    badge_styles(display[["medicine", "risk_label", "usable_stock", "forecast_week", "expected", "busy", "lead", "reason"]],
+                 {"risk_label": RISK_TONES}),
     column_config={
         "medicine": "Medicine",
         "risk_label": "Risk",
@@ -80,17 +83,23 @@ projection = projections[row["medicine_id"]]
 
 st.markdown(f"**{RISK_ICONS[row['risk']]} {row['risk']}**: {row['reason']}")
 c1, c2, c3, c4 = st.columns(4)
-c1.metric(f"Usable stock ({row['unit']})", f"{row['usable_stock']:,.0f}")
-c2.metric("Forecast per day", f"{row['forecast_week'] / 7:,.1f}")
-c3.metric(
-    "Simple estimate (days)", "—" if pd.isna(row["simple_days"]) else f"{row['simple_days']:.1f}",
-    help="Usable stock ÷ forecast daily demand. A rough check; the simulation below also accounts for weekdays and expiry.",
-)
-c4.metric("Simulated (days)", "> 90" if pd.isna(row["expected_days"]) else int(row["expected_days"]))
+with c1:
+    stat_card(f"Usable stock ({row['unit']})", f"{row['usable_stock']:,.0f}", "blue", key="one-usable")
+with c2:
+    stat_card("Forecast per day", f"{row['forecast_week'] / 7:,.1f}", "indigo", key="one-daily")
+with c3:
+    stat_card(
+        "Simple estimate (days)", "—" if pd.isna(row["simple_days"]) else f"{row['simple_days']:.1f}", "slate",
+        key="one-simple",
+        help="Usable stock ÷ forecast daily demand. A rough check; the simulation below also accounts for weekdays and expiry.",
+    )
+with c4:
+    stat_card("Simulated (days)", "> 90" if pd.isna(row["expected_days"]) else int(row["expected_days"]),
+              RISK_TONES[row["risk"]], key="one-simulated")
 
 chart_days = max(horizon, int(row["lead_time"]) + 7)  # show the planning horizon, and at least the lead time
 chart = projection.iloc[:chart_days].assign(**{"Reorder level": float(row["reorder_level"])})
-st.line_chart(chart, y_label=f"Usable stock ({row['unit']})", color=["#1f77b4", "#ff7f0e", "#7f7f7f"])
+st.line_chart(chart, y_label=f"Usable stock ({row['unit']})", color=["#0D9488", "#F97316", "#94A3B8"])
 lead_end = today + pd.Timedelta(days=int(row["lead_time"]))
 st.caption(
     f"Projected usable stock at the end of each day, counting open orders on their expected date. A delivery ordered today would "

@@ -5,10 +5,9 @@ import streamlit as st
 import inventory
 from database import inventory_rows, medicine_record_counts
 from inventory import InventoryError
-from ui import flash, form_key, show_flash
+from ui import badge_styles, flash, form_key, page_header, show_flash
 
-st.title("💊 Medicines")
-st.caption("Manage the medicine catalogue. Stock quantities are changed on the Inventory page.")
+page_header("💊", "Medicines", "Register medicines and manage catalogue details. Stock is changed on the Inventory page.", "violet")
 show_flash()
 
 medicines = inventory_rows(include_inactive=True)
@@ -122,7 +121,7 @@ if section == "Catalogue":
                     "reorder_level": "Reorder level", "lead_time_days": "Lead time (days)",
                     "stock": "In stock", "active": "Status",
                 }
-            ),
+            ).pipe(badge_styles, {"Status": {"Active": "green", "Deactivated": "slate"}}),
             hide_index=True,
             width="stretch",
         )

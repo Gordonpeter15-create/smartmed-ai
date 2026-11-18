@@ -4,10 +4,10 @@ import streamlit as st
 
 import forecasting
 from forecasting import HORIZON_DAYS, METHODS
-from ui import cached_backtest, cached_forecast
+from ui import badge_styles, cached_backtest, cached_forecast, page_header
 
 
-st.title("📈 Forecasting")
+page_header("📈", "Forecasting", "7-day demand forecasts, and how each method performed on held-out weeks.", "indigo")
 st.warning(
     "🧪 Forecasts are **estimates** built from **synthetic** data. They show that the forecasting pipeline works, "
     "not how accurate it would be in a real facility. Do not use them for real purchasing or clinical decisions."
@@ -73,7 +73,7 @@ comparison = metrics.reset_index().assign(
     used=lambda d: d["method"].map(lambda m: "✅" if m == METHODS[chosen] else ""),
 )
 st.dataframe(
-    comparison[["method", "wape", "mae", "bias", "used"]],
+    badge_styles(comparison[["method", "wape", "mae", "bias", "used"]], {"used": {"✅": "green"}}),
     column_config={
         "method": "Method",
         "wape": st.column_config.NumberColumn("WAPE (%)", format="%.1f", help="Total absolute error ÷ total actual demand. Lower is better."),

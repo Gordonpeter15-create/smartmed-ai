@@ -13,8 +13,9 @@ from database import (
     batch_rows, inventory_rows, order_rows, reconciliation_mismatches, transaction_rows, unmet_request_rows,
 )
 from inventory import ADJUSTMENT_REASONS, EXPIRY_WARNING_DAYS, InventoryError
-from ui import flash, form_key, pick_medicine, show_flash
+from ui import badge_styles, flash, form_key, page_header, pick_medicine, show_flash, stat_card
 
+TYPE_BADGES = {"Received": "green", "Dispensed": "blue", "Adjustment": "amber", "Opening": "slate"}
 TYPE_LABELS = {
     "opening_balance": "Opening balance",
     "receipt": "Received",
@@ -22,8 +23,7 @@ TYPE_LABELS = {
     "adjustment": "Adjustment",
 }
 
-st.title("📦 Inventory")
-st.caption("Record stock received, dispensed, and corrected. Every change is kept in the transaction history.")
+page_header("📦", "Inventory", "Record stock received, dispensed, and corrected. Every change is kept in the history.", "blue")
 show_flash()
 
 medicine = pick_medicine(inventory_rows(), "Working with medicine")
@@ -34,11 +34,18 @@ today = date.today()
 unit = medicine["unit"]
 usable = inventory.usable_stock(medicine["id"], today)
 open_orders = order_rows(medicine["id"])
+on_order = sum(o["quantity"] for o in open_orders)
 col1, col2, col3, col4 = st.columns(4)
-col1.metric(f"In stock ({unit})", f"{medicine['stock']:,}")
-col2.metric(f"Usable today ({unit})", f"{usable:,}", help="Excludes batches that have expired.")
-col3.metric(f"On order ({unit})", f"{sum(o['quantity'] for o in open_orders):,}", help="Open incoming orders.")
-col4.metric(f"Reorder level ({unit})", f"{medicine['reorder_level']:,}")
+with col1:
+    stat_card(f"In stock ({unit})", f"{medicine['stock']:,}", "blue", key="in-stock")
+with col2:
+    stat_card(f"Usable today ({unit})", f"{usable:,}", "teal" if usable else "red", key="usable",
+              help="Excludes batches that have expired.")
+with col3:
+    stat_card(f"On order ({unit})", f"{on_order:,}", "violet", key="on-order", help="Open incoming orders.")
+with col4:
+    stat_card(f"Reorder level ({unit})", f"{medicine['reorder_level']:,}",
+              "amber" if usable + on_order <= medicine["reorder_level"] else "slate", key="reorder-level")
 
 # A radio button (rather than st.tabs) remembers the chosen section after a form is submitted.
 section = st.radio(
@@ -163,7 +170,7 @@ if section == "Incoming orders":
             orders[["id", "quantity", "order_date", "expected_arrival", "status", "note"]].rename(
                 columns={"id": "Order", "quantity": f"Quantity ({unit})", "order_date": "Ordered",
                          "expected_arrival": "Expected", "status": "Status", "note": "Note"}
-            ),
+            ).pipe(badge_styles, {"Status": {"Overdue": "red", "On the way": "blue"}}),
             hide_index=True,
             width="stretch",
         )
@@ -196,7 +203,7 @@ if section == "Batches":
                     "use_order": "FEFO order", "batch_code": "Batch", "quantity": f"Quantity ({unit})",
                     "expiry_date": "Expiry date", "days_to_expiry": "Days to expiry", "status": "Status",
                 }
-            ),
+            ).pipe(badge_styles, {"Status": {"Expired": "red", "Expires within": "amber", "OK": "green"}}),
             hide_index=True,
             width="stretch",
         )
@@ -218,7 +225,7 @@ if section == "Transaction history":
                     "transaction_type": "Type", "quantity_change": "Change", "unit": "Unit",
                     "reason": "Reason", "note": "Note", "recorded_at": "Recorded at",
                 }
-            ),
+            ).pipe(badge_styles, {"Type": TYPE_BADGES}),
             hide_index=True,
             width="stretch",
         )

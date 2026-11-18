@@ -5,11 +5,12 @@ import streamlit as st
 import reorder
 import stockout
 from reorder import PRIORITY_ORDER, SOON_DAYS
-from ui import cached_forecast
+from ui import badge_styles, cached_forecast, page_header, stat_card
 
+PRIORITY_TONES = {"Urgent": "red", "Reorder now": "orange", "Soon": "amber", "Not yet": "green", "Unknown": "slate"}
 PRIORITY_ICONS = {"Urgent": "🔴", "Reorder now": "🟠", "Soon": "🟡", "Not yet": "🟢", "Unknown": "⚪"}
 
-st.title("🛒 Reorder suggestions")
+page_header("🛒", "Reorder suggestions", "When to reorder, how much, and which medicines first, with the arithmetic shown.", "amber")
 st.warning(
     "🧪 **Prototype suggestions** built from a **synthetic** demand forecast. A responsible staff member must review "
     "every suggestion before ordering. They are not purchase orders, and they do not account for budget, pack "
@@ -36,7 +37,8 @@ suggestions = reorder.suggest_reorders(risk, safety_days=safety_days, cover_days
 
 counts = suggestions["priority"].value_counts()
 for column, level in zip(st.columns(len(PRIORITY_ORDER)), PRIORITY_ORDER):
-    column.metric(f"{PRIORITY_ICONS[level]} {level}", int(counts.get(level, 0)))
+    with column:
+        stat_card(f"{PRIORITY_ICONS[level]} {level}", int(counts.get(level, 0)), PRIORITY_TONES[level] if counts.get(level, 0) else "slate", key=f"priority-{level}")
 
 table = suggestions.assign(
     priority_label=suggestions["priority"].map(lambda p: f"{PRIORITY_ICONS[p]} {p}"),
@@ -46,7 +48,11 @@ table = suggestions.assign(
     ),
 )
 st.dataframe(
-    table[["medicine", "priority_label", "risk", "reorder_by", "quantity", "unit", "position", "reorder_point", "daily_demand", "lead_time", "action"]],
+    badge_styles(
+        table[["medicine", "priority_label", "risk", "reorder_by", "quantity", "unit", "position", "reorder_point", "daily_demand", "lead_time", "action"]],
+        {"priority_label": PRIORITY_TONES,
+         "risk": {"Critical": "red", "High": "orange", "Medium": "amber", "Low": "green", "Unknown": "slate"}},
+    ),
     column_config={
         "medicine": "Medicine",
         "priority_label": "Priority",

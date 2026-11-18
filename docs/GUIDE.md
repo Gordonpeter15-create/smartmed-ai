@@ -32,6 +32,8 @@ After editing a `.py` file **outside** `views/`, stop Streamlit and start it aga
 
 What each alert and suggestion means is explained in [METHODS.md](METHODS.md).
 
+**Colours carry meaning everywhere:** red = act now (Critical, Urgent, expired, out of stock), orange/amber = check soon, green = fine, grey = nothing to count. Icons and words are always shown too, so colour is never the only signal. The app follows your system's light or dark mode; switch it in the ⋮ menu → Settings.
+
 ## 3. Everyday tasks
 
 - **A delivery arrives:** Inventory → Receive stock. Enter the batch code, quantity, and expiry date. If it is for an open order, pick the order so it is marked received.
@@ -104,7 +106,8 @@ seed_data.py → synthetic_data.py (simulation)
 | `stockout.py` | Day-by-day stock simulation and risk rules |
 | `reorder.py` | Reorder point, inventory position, quantity, priority |
 | `expiry.py` | Batch-by-batch use-before-expiry projection |
-| `ui.py` | Shared page helpers and the cached forecast |
+| `ui.py` | Shared page helpers, the cached forecast, and the visual style (banners, coloured cards, table badges) |
+| `.streamlit/config.toml`, `assets/` | Colour theme (light and dark) and the logo |
 | `evaluate.py`, `inspect_db.py` | Evaluation report; read-only database inspection |
 | `tests/` | Automated checks |
 | `docs/` | This guide, data, methods, limitations, evaluation report |

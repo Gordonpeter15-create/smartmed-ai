@@ -1,0 +1,50 @@
+# SmartMed AI colour theme. Streamlit reads this file automatically (locally and on Streamlit Cloud).
+# Light and dark versions are defined; the app follows the viewer's system setting, and viewers can
+# switch in the ⋮ menu → Settings.
+
+[theme]
+baseRadius = "0.75rem"
+buttonRadius = "0.6rem"
+headingFontWeights = [800, 700, 700, 600, 600, 600]
+metricValueFontWeight = 700
+showWidgetBorder = true
+# Colourful, distinguishable chart colours: teal, amber, indigo, rose, green, sky, purple
+chartCategoricalColors = ["#0D9488", "#F59E0B", "#6366F1", "#E11D48", "#16A34A", "#0EA5E9", "#A855F7"]
+
+[theme.light]
+primaryColor = "#0D9488"
+backgroundColor = "#F5F9FB"
+secondaryBackgroundColor = "#E6F2F1"
+textColor = "#1E293B"
+linkColor = "#0F766E"
+borderColor = "#CFE3E0"
+dataframeBorderColor = "#D9E7E5"
+dataframeHeaderBackgroundColor = "#DDF1EE"
+dataframeHeaderTextColor = "#134E4A"
+
+[theme.light.sidebar]
+backgroundColor = "#0F3D3E"
+secondaryBackgroundColor = "#17595A"
+textColor = "#E6FFFA"
+primaryColor = "#5EEAD4"
+borderColor = "#1F6B6B"
+linkColor = "#99F6E4"
+
+[theme.dark]
+primaryColor = "#2DD4BF"
+backgroundColor = "#0B1620"
+secondaryBackgroundColor = "#13262F"
+textColor = "#E2E8F0"
+linkColor = "#5EEAD4"
+borderColor = "#24414A"
+dataframeBorderColor = "#24414A"
+dataframeHeaderBackgroundColor = "#16323A"
+dataframeHeaderTextColor = "#CCFBF1"
+
+[theme.dark.sidebar]
+backgroundColor = "#06262A"
+secondaryBackgroundColor = "#0E3A3E"
+textColor = "#E6FFFA"
+primaryColor = "#5EEAD4"
+borderColor = "#14474B"
+linkColor = "#99F6E4"

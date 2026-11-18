@@ -19,15 +19,16 @@ import expiry
 import stockout
 from inventory import EXPIRY_WARNING_DAYS
 from synthetic_data import DATASET_VERSION
-from ui import cached_forecast
+from ui import badge_styles, cached_forecast, page_header, panel, stat_card
 
+STOCK_BADGES = {"Out of stock": "red", "At or below": "amber", "Above": "green"}
+TYPE_BADGES = {"Received": "green", "Dispensed": "blue", "Adjustment": "amber", "Opening": "slate"}
 TYPE_LABELS = {"opening_balance": "Opening balance", "receipt": "Received", "dispense": "Dispensed", "adjustment": "Adjustment"}
 
 info = dataset_info()
 
-st.title("💊 SmartMed AI")
-st.caption("Medicine inventory prototype · Sample records are synthetic and for demonstration only.")
-st.info("Prototype only: this dashboard does not provide clinical advice or validated supply decisions.")
+page_header("📊", "Dashboard", "Stock levels, alerts, and recent activity at a glance.", "teal")
+st.info("Prototype only: this dashboard does not provide clinical advice or validated supply decisions.", icon="🧪")
 
 if info.get("generator_version") != DATASET_VERSION:
     st.warning(
@@ -65,25 +66,34 @@ expiring = pd.DataFrame([dict(row) for row in expiring_batch_rows(window)])
 expired = expiring[expiring["days_left"] <= 0] if not expiring.empty else expiring
 expiring_soon = expiring[expiring["days_left"] > 0] if not expiring.empty else expiring
 
+# Card colours carry meaning: green = nothing to do, amber/orange = check soon, red = act now.
 col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Medicines tracked", len(inventory), help="Active medicines in the `medicines` table.")
-col2.metric(
-    "Units in stock", f"{int(inventory['stock'].sum()):,}",
-    help="Sum of all batch quantities. This adds different units together (tablets, vials, bottles…), "
-    "so treat it as a rough size indicator only.",
-)
-col3.metric("At or below reorder level", len(low_stock), help="Total stock ≤ the medicine's reorder level. Includes out-of-stock medicines.")
-col4.metric("Out of stock", len(out_of_stock), help="Medicines whose batches add up to zero.")
-col5.metric(
-    f"Batches expiring ≤ {window} days", len(expiring_soon),
-    help="In-stock batches whose expiry date is within the window. Already-expired batches are counted separately below.",
-)
+with col1:
+    stat_card("Medicines tracked", len(inventory), "teal", help="Active medicines in the `medicines` table.")
+with col2:
+    stat_card(
+        "Units in stock", f"{int(inventory['stock'].sum()):,}", "blue",
+        help="Sum of all batch quantities. This adds different units together (tablets, vials, bottles…), "
+        "so treat it as a rough size indicator only.",
+    )
+with col3:
+    stat_card("At or below reorder level", len(low_stock), "amber" if len(low_stock) else "green",
+              help="Total stock ≤ the medicine's reorder level. Includes out-of-stock medicines.")
+with col4:
+    stat_card("Out of stock", len(out_of_stock), "red" if len(out_of_stock) else "green",
+              help="Medicines whose batches add up to zero.")
+with col5:
+    stat_card(
+        f"Batches expiring ≤ {window} days", len(expiring_soon), "orange" if len(expiring_soon) else "green",
+        key="expiring",
+        help="In-stock batches whose expiry date is within the window. Already-expired batches are counted separately below.",
+    )
 
 # ---------- alerts ----------
 st.subheader("Needs attention")
 
-with st.container(border=True):
-    st.markdown("**Stock level** · source: `batches` totals compared with `medicines.reorder_level`")
+with panel("amber", "stock"):
+    st.markdown("**📉 Stock level** · source: `batches` totals compared with `medicines.reorder_level`")
     if low_stock.empty:
         st.success("No medicine is at or below its reorder level.")
     else:
@@ -91,11 +101,14 @@ with st.container(border=True):
             ["stock", "shortfall"], ascending=[True, False]
         )
         st.dataframe(
-            alert[["name", "stock", "reorder_level", "shortfall", "unit", "status"]].rename(
-                columns={
-                    "name": "Medicine", "stock": "In stock", "reorder_level": "Reorder level",
-                    "shortfall": "Below level by", "unit": "Unit", "status": "Status",
-                }
+            badge_styles(
+                alert[["name", "stock", "reorder_level", "shortfall", "unit", "status"]].rename(
+                    columns={
+                        "name": "Medicine", "stock": "In stock", "reorder_level": "Reorder level",
+                        "shortfall": "Below level by", "unit": "Unit", "status": "Status",
+                    }
+                ),
+                {"Status": STOCK_BADGES},
             ),
             hide_index=True,
             width="stretch",
@@ -105,8 +118,8 @@ with st.container(border=True):
             "Reorder suggestions for what is already on the way."
         )
 
-with st.container(border=True):
-    st.markdown(f"**Expiry** · source: `batches.expiry_date` · window: {window} days")
+with panel("orange", "expiry"):
+    st.markdown(f"**🗓️ Expiry** · source: `batches.expiry_date` · window: {window} days")
     if not expired.empty:
         st.error(f"{len(expired)} expired batch(es) still hold stock. Remove them with an adjustment (reason: “Expired stock removed”).")
     if expiring.empty:
@@ -115,11 +128,14 @@ with st.container(border=True):
         table = expiring.copy()
         table["status"] = table["days_left"].apply(lambda days: "Expired" if days <= 0 else "Expiring soon")
         st.dataframe(
-            table[["medicine", "batch_code", "quantity", "unit", "expiry_date", "days_left", "status"]].rename(
-                columns={
-                    "medicine": "Medicine", "batch_code": "Batch", "quantity": "Quantity", "unit": "Unit",
-                    "expiry_date": "Expiry date", "days_left": "Days left", "status": "Status",
-                }
+            badge_styles(
+                table[["medicine", "batch_code", "quantity", "unit", "expiry_date", "days_left", "status"]].rename(
+                    columns={
+                        "medicine": "Medicine", "batch_code": "Batch", "quantity": "Quantity", "unit": "Unit",
+                        "expiry_date": "Expiry date", "days_left": "Days left", "status": "Status",
+                    }
+                ),
+                {"Status": {"Expired": "red", "Expiring soon": "amber"}},
             ),
             hide_index=True,
             width="stretch",
@@ -139,8 +155,8 @@ with st.container(border=True):
     st.caption("Expiry alerts are stock-keeping prompts, not a clinical or regulatory determination.")
     st.page_link("views/expiry_page.py", label="See every batch, its use order, and why", icon="🗓️")
 
-with st.container(border=True):
-    st.markdown("**Projected shortages** · source: synthetic demand forecast + current usable stock (30-day horizon)")
+with panel("red", "shortages"):
+    st.markdown("**⏳ Projected shortages** · source: synthetic demand forecast + current usable stock (30-day horizon)")
     forecast_result, demand_history = cached_forecast()
     if forecast_result is None:
         st.info("No demand history, so shortages cannot be projected.")
@@ -151,7 +167,8 @@ with st.container(border=True):
             st.success("No medicine is rated Critical or High.")
         else:
             st.dataframe(
-                urgent[["medicine", "risk", "expected_days", "lead_time", "reason"]],
+                badge_styles(urgent[["medicine", "risk", "expected_days", "lead_time", "reason"]],
+                             {"risk": {"Critical": "red", "High": "orange"}}),
                 column_config={
                     "medicine": "Medicine", "risk": "Risk",
                     "expected_days": st.column_config.NumberColumn("Days until stockout (expected)", format="%d"),
@@ -187,7 +204,7 @@ display = visible[["name", "category", "stock", "unit", "reorder_level", "neares
 if display.empty:
     st.info("No medicines match this filter.")
 else:
-    st.dataframe(display, hide_index=True, width="stretch")
+    st.dataframe(badge_styles(display, {"Status": STOCK_BADGES}), hide_index=True, width="stretch")
 st.caption(
     "Reorder level = simple threshold (for the synthetic medicines: average weekday demand × (lead time + 10 days)). "
     "It is not a forecast. Deactivated medicines are not counted."
@@ -201,11 +218,14 @@ if recent.empty:
 else:
     recent["transaction_type"] = recent["transaction_type"].map(TYPE_LABELS)
     st.dataframe(
-        recent[["transaction_date", "medicine", "batch_code", "transaction_type", "quantity_change", "unit", "reason"]].rename(
-            columns={
-                "transaction_date": "Date", "medicine": "Medicine", "batch_code": "Batch",
-                "transaction_type": "Type", "quantity_change": "Change", "unit": "Unit", "reason": "Reason",
-            }
+        badge_styles(
+            recent[["transaction_date", "medicine", "batch_code", "transaction_type", "quantity_change", "unit", "reason"]].rename(
+                columns={
+                    "transaction_date": "Date", "medicine": "Medicine", "batch_code": "Batch",
+                    "transaction_type": "Type", "quantity_change": "Change", "unit": "Unit", "reason": "Reason",
+                }
+            ),
+            {"Type": TYPE_BADGES},
         ),
         hide_index=True,
         width="stretch",
@@ -219,7 +239,7 @@ selected = st.selectbox("Medicine", inventory["name"].tolist())
 medicine_id = int(inventory.loc[inventory["name"] == selected, "id"].iloc[0])
 unit = inventory.loc[inventory["name"] == selected, "unit"].iloc[0]
 view = st.radio("View", ["Daily", "Monthly"], horizontal=True)
-colors = ["#1f77b4", "#d62728"]
+colors = ["#0D9488", "#E11D48"]  # dispensed = teal, unmet = rose
 
 
 def show_chart(chart: pd.DataFrame) -> None:
@@ -244,10 +264,16 @@ else:
         "Not based on any clinic, pharmacy, or patient."
     )
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Days of history", len(medicine))
-    m2.metric(f"Dispensed ({unit})", f"{int(medicine['quantity_dispensed'].sum()):,}")
-    m3.metric("Stockout days", int(medicine["stockout"].sum()))
-    m4.metric(f"Unmet demand ({unit})", f"{int(medicine['unmet_quantity'].sum()):,}")
+    stockout_days = int(medicine["stockout"].sum())
+    with m1:
+        stat_card("Days of history", len(medicine), "slate", key="history-days")
+    with m2:
+        stat_card(f"Dispensed ({unit})", f"{int(medicine['quantity_dispensed'].sum()):,}", "teal", key="history-dispensed")
+    with m3:
+        stat_card("Stockout days", stockout_days, "rose" if stockout_days else "green", key="history-stockout")
+    with m4:
+        stat_card(f"Unmet demand ({unit})", f"{int(medicine['unmet_quantity'].sum()):,}",
+                  "rose" if stockout_days else "green", key="history-unmet")
     show_chart(
         medicine.set_index("usage_date")[["quantity_dispensed", "unmet_quantity"]].rename(
             columns={"quantity_dispensed": "Dispensed", "unmet_quantity": "Unmet (out of stock)"}
