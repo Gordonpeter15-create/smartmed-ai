@@ -25,4 +25,8 @@ navigation = st.navigation(
     ]
 )
 st.sidebar.caption("Educational prototype · synthetic sample data · not for clinical or supply decisions.")
+st.sidebar.caption(
+    "Demo database: on a shared deployment, everyone sees the same records, and the data resets when the app "
+    "restarts. Never enter real patient or facility data."
+)
 navigation.run()
