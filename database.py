@@ -26,8 +26,28 @@ def connect() -> Iterator[sqlite3.Connection]:
     try:
         with connection:
             yield connection
+        if connection.total_changes:
+            global _saves
+            _saves += 1
     finally:
         connection.close()
+
+
+_saves = 0  # how many times this program has saved a change; used by data_version()
+
+
+def data_version() -> tuple:
+    """A small value that changes whenever the database changes.
+
+    The app uses it to reuse earlier results until something new is saved.
+    It counts this program's saves and also looks at the file itself, so a
+    reset from the command line is noticed too.
+    """
+    try:
+        stat = DB_PATH.stat()
+    except FileNotFoundError:
+        return (_saves, None)
+    return (_saves, stat.st_ino, stat.st_mtime_ns, stat.st_size)
 
 
 def initialize_database() -> None:

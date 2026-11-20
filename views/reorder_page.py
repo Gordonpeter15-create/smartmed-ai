@@ -3,9 +3,8 @@ import pandas as pd
 import streamlit as st
 
 import reorder
-import stockout
 from reorder import PRIORITY_ORDER, SOON_DAYS
-from ui import badge_styles, cached_forecast, page_header, stat_card
+from ui import badge_styles, cached_forecast, cached_risk, page_header, stat_card
 
 PRIORITY_TONES = {"Urgent": "red", "Reorder now": "orange", "Soon": "amber", "Not yet": "green", "Unknown": "slate"}
 PRIORITY_ICONS = {"Urgent": "🔴", "Reorder now": "🟠", "Soon": "🟡", "Not yet": "🟢", "Unknown": "⚪"}
@@ -32,7 +31,7 @@ cover_days = col2.slider(
     help="How many days of average demand an order adds on top of the reorder point.",
 )
 
-risk, _ = stockout.assess_risk(result.forecast, history, horizon=30)
+risk, _ = cached_risk(30)
 suggestions = reorder.suggest_reorders(risk, safety_days=safety_days, cover_days=cover_days)
 
 counts = suggestions["priority"].value_counts()

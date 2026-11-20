@@ -1,4 +1,5 @@
 """Small helpers shared by the Streamlit pages: messages, pickers, cached results, and the visual style."""
+from datetime import date
 from html import escape
 from pathlib import Path
 import re
@@ -181,3 +182,72 @@ def cached_backtest():
     import forecasting
 
     return _run_backtest(forecasting.data_signature())
+
+
+# ---------- results reused until the data changes ----------
+# Each page used to recalculate these on every click. Now they are worked out
+# once and reused until something is saved (or the day changes).
+# `version` is database.data_version(); it is only there to tell Streamlit when to recalculate.
+
+@st.cache_data(show_spinner=False, max_entries=20)
+def _risk(version: tuple, today: date, horizon: int):
+    import stockout
+
+    result, history = cached_forecast()
+    return stockout.assess_risk(result.forecast, history, horizon=horizon)
+
+
+def cached_risk(horizon: int = 30):
+    """Stockout risk table and day-by-day projections (see stockout.assess_risk)."""
+    from database import data_version
+
+    return _risk(data_version(), date.today(), horizon)
+
+
+@st.cache_data(show_spinner=False, max_entries=5)
+def _expiry(version: tuple, today: date):
+    import expiry
+
+    result, history = cached_forecast()
+    return expiry.assess_expiry(result.forecast, history)
+
+
+def cached_expiry():
+    """Batch expiry table (see expiry.assess_expiry)."""
+    from database import data_version
+
+    return _expiry(data_version(), date.today())
+
+
+@st.cache_data(show_spinner=False, max_entries=5)
+def _usage_history(version: tuple):
+    from database import daily_consumption_rows
+
+    history = pd.DataFrame([dict(row) for row in daily_consumption_rows()])
+    if not history.empty:
+        history["usage_date"] = pd.to_datetime(history["usage_date"])
+    return history
+
+
+def cached_usage_history():
+    """All synthetic daily records as a table (usage_date already converted to dates)."""
+    from database import data_version
+
+    return _usage_history(data_version())
+
+
+@st.cache_resource(show_spinner="Preparing the database…")
+def _prepare_database(file_id) -> None:
+    from database import initialize_database
+    from seed_data import seed_database
+
+    initialize_database()  # create missing tables and upgrade older databases
+    seed_database()        # add synthetic sample data only if the database is empty
+
+
+def prepare_database() -> None:
+    """Set up and fill the database once, instead of on every click.
+    Runs again only if the database file is replaced (for example, by a reset)."""
+    from database import DB_PATH
+
+    _prepare_database(DB_PATH.stat().st_ino if DB_PATH.exists() else None)

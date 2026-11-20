@@ -4,9 +4,8 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-import stockout
 from stockout import DEFAULT_LEAD_TIME_DAYS, RISK_ORDER, SIMULATION_DAYS
-from ui import badge_styles, cached_forecast, page_header, stat_card
+from ui import badge_styles, cached_forecast, cached_risk, page_header, stat_card
 
 RISK_TONES = {"Critical": "red", "High": "orange", "Medium": "amber", "Low": "green", "Unknown": "slate"}
 RISK_ICONS = {"Critical": "🔴", "High": "🟠", "Medium": "🟡", "Low": "🟢", "Unknown": "⚪"}
@@ -30,7 +29,7 @@ horizon = st.select_slider(
     "Planning horizon (days)", options=[14, 30, 60, 90], value=30,
     help="Medicines expected to run out within this many days (but after their lead time) are rated Medium.",
 )
-table, projections = stockout.assess_risk(result.forecast, history, horizon=horizon)
+table, projections = cached_risk(horizon)
 today = date.today()
 history_end = result.data_summary["last_day"].date()
 if (today - history_end).days > 1:

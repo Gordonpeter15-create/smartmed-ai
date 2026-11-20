@@ -7,7 +7,6 @@ import pandas as pd
 import streamlit as st
 
 from database import (
-    daily_consumption_rows,
     dataset_info,
     expiring_batch_rows,
     inventory_rows,
@@ -15,11 +14,11 @@ from database import (
     transaction_rows,
     unmet_request_rows,
 )
-import expiry
-import stockout
 from inventory import EXPIRY_WARNING_DAYS
 from synthetic_data import DATASET_VERSION
-from ui import badge_styles, cached_forecast, page_header, panel, stat_card
+from ui import (
+    badge_styles, cached_expiry, cached_forecast, cached_risk, cached_usage_history, page_header, panel, stat_card,
+)
 
 STOCK_BADGES = {"Out of stock": "red", "At or below": "amber", "Above": "green"}
 TYPE_BADGES = {"Received": "green", "Dispensed": "blue", "Adjustment": "amber", "Opening": "slate"}
@@ -142,7 +141,7 @@ with panel("orange", "expiry"):
         )
     expiry_forecast, expiry_history = cached_forecast()
     if expiry_forecast is not None:
-        batch_check = expiry.assess_expiry(expiry_forecast.forecast, expiry_history)
+        batch_check = cached_expiry()
         at_risk = int((batch_check["status"] == "At risk").sum()) if not batch_check.empty else 0
         watch = int((batch_check["status"] == "Watch").sum()) if not batch_check.empty else 0
         if at_risk or watch:
@@ -161,7 +160,7 @@ with panel("red", "shortages"):
     if forecast_result is None:
         st.info("No demand history, so shortages cannot be projected.")
     else:
-        risk_table, _ = stockout.assess_risk(forecast_result.forecast, demand_history, horizon=30)
+        risk_table, _ = cached_risk(30)
         urgent = risk_table[risk_table["risk"].isin(["Critical", "High"])]
         if urgent.empty:
             st.success("No medicine is rated Critical or High.")
@@ -252,12 +251,11 @@ def show_chart(chart: pd.DataFrame) -> None:
 
 
 st.markdown("#### 🧪 Synthetic history")
-history = pd.DataFrame([dict(row) for row in daily_consumption_rows()])
+history = cached_usage_history()
 medicine = history[history["medicine"] == selected] if not history.empty else history
 if medicine.empty:
     st.info("No synthetic history for this medicine (for example, a medicine registered in the app).")
 else:
-    medicine = medicine.assign(usage_date=pd.to_datetime(medicine["usage_date"]))
     st.caption(
         f"SYNTHETIC DATA · simulated daily records from {info.get('start_date')} to {info.get('end_date')} "
         f"· generator version {info.get('generator_version')} · seed {info.get('seed')} · source: `daily_consumption`. "

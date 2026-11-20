@@ -5,14 +5,11 @@ navigation. Each screen lives in its own file inside the views/ folder.
 """
 import streamlit as st
 
-from database import initialize_database
-from seed_data import seed_database
-from ui import ASSETS, apply_style
+from ui import ASSETS, apply_style, prepare_database
 
 st.set_page_config(page_title="SmartMed AI", page_icon=str(ASSETS / "icon.svg"), layout="wide")
-apply_style()          # colours, banners, cards, and the sidebar logo
-initialize_database()  # create missing tables and upgrade older databases
-seed_database()        # add synthetic sample data only if the database is empty
+apply_style()       # colours, banners, cards, and the sidebar logo
+prepare_database()  # create tables and add synthetic sample data (once, not on every click)
 
 navigation = st.navigation(
     [

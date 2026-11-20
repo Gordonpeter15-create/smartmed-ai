@@ -2,9 +2,8 @@
 import pandas as pd
 import streamlit as st
 
-import expiry
 from expiry import STATUS_ORDER
-from ui import badge_styles, cached_forecast, page_header, stat_card
+from ui import badge_styles, cached_expiry, cached_forecast, page_header, stat_card
 
 STATUS_TONES = {"Expired": "red", "At risk": "rose", "Watch": "amber", "OK": "green", "No forecast": "slate"}
 STATUS_BADGES = {"Expired": "red", "At risk": "red", "Watch": "amber", "OK": "green", "No forecast": "slate"}
@@ -21,7 +20,7 @@ if result is None:
     st.info("No demand history, so batch use cannot be projected.")
     st.stop()
 
-table = expiry.assess_expiry(result.forecast, history)
+table = cached_expiry()
 if table.empty:
     st.info("No batches in stock.")
     st.stop()
